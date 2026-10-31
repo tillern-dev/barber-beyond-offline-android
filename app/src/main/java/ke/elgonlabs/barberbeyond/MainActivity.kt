@@ -285,37 +285,74 @@ fun Manager(dao: RecordDao) {
                         Spacer(Modifier.height(12.dp))
                     }
                     when (tab) {
+
                         "Dashboard" -> {
-                            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Spacer(Modifier.height(6.dp))
-                                Column {
-                                    Text("Welcome back", color = Muted, fontSize = 13.sp)
-                                    Text("Shop Overview", color = TextColor, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                                }
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = Panel),
-                                    shape = RoundedCornerShape(20.dp),
-                                    border = BorderStroke(1.dp, Gold.copy(alpha = 0.35f))
-                                ) {
-                                    Column(Modifier.fillMaxWidth().padding(18.dp)) {
-                                        Text("TODAY'S REVENUE", color = Muted, fontSize = 11.sp, letterSpacing = 1.sp)
-                                        Spacer(Modifier.height(8.dp))
-                                        Text(money(todaySales), color = Gold, fontSize = 29.sp, fontWeight = FontWeight.ExtraBold)
-                                        Spacer(Modifier.height(5.dp))
-                                        Text("${sales.count { it.createdAt >= todayStart }} sales recorded today", color = Muted, fontSize = 12.sp)
+                            val todayCount = sales.count { it.createdAt >= todayStart }
+                            val cashToday = sales.filter { it.createdAt >= todayStart && it.payment == "Cash" }.sumOf { it.amount }
+                            val mpesaToday = sales.filter { it.createdAt >= todayStart && it.payment == "M-Pesa" }.sumOf { it.amount }
+                            val recentActivity = records.filter { it.type == "Sales" || it.type == "Expenses" }
+                                .sortedByDescending { it.createdAt }.take(2)
+                            Column(
+                                Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Spacer(Modifier.height(2.dp))
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("Welcome back", color = Muted, fontSize = 12.sp)
+                                        Text("Your shop today", color = TextColor, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(SimpleDateFormat("EEE, dd MMM", Locale.ENGLISH).format(Date()),
+                                            color = Gold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                        Text("● OFFLINE", color = Muted, fontSize = 9.sp)
                                     }
                                 }
-                                Text("Quick access", color = TextColor, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                                RevenueHero(money(todaySales), todayCount) { openEditor("Sales") }
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    DashboardMiniMetric("EXPENSES", money(todayExpenses), "−", Modifier.weight(1f), false)
+                                    DashboardMiniMetric("EST. PROFIT", money(todaySales - todayExpenses), "↗", Modifier.weight(1f), true)
+                                }
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Quick access", color = TextColor, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f))
+                                    Text("YOUR TOOLS", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
+                                }
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                     HomeTile("Sales", "＋", compactTiles, Modifier.weight(1f)) { tab = "Sales"; search = "" }
                                     HomeTile("Expenses", "−", compactTiles, Modifier.weight(1f)) { tab = "Expenses"; search = "" }
                                     HomeTile("Services", "✂", compactTiles, Modifier.weight(1f)) { tab = "Services"; search = "" }
                                 }
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                    HomeTile("Reports", "▥", compactTiles, Modifier.weight(1f)) { tab = "Reports" }
+                                    HomeTile("Reports", "▤", compactTiles, Modifier.weight(1f)) { tab = "Reports" }
                                     HomeTile("History", "◷", compactTiles, Modifier.weight(1f)) { tab = "History"; search = "" }
-                                    HomeTile("Backup", "⇪", compactTiles, Modifier.weight(1f)) { backupParent="Dashboard"; tab = "Backup" }
+                                    HomeTile("Backup", "⇧", compactTiles, Modifier.weight(1f)) { backupParent = "Dashboard"; tab = "Backup" }
+                                }
+                                PaymentSplitCard(cashToday, mpesaToday)
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Recent activity", color = TextColor, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f))
+                                    TextButton(onClick = { tab = "History"; search = "" }) {
+                                        Text("View all ›", color = Gold, fontSize = 12.sp)
+                                    }
+                                }
+                                if (recentActivity.isEmpty()) {
+                                    Card(colors = CardDefaults.cardColors(containerColor = Panel),
+                                        shape = RoundedCornerShape(13.dp),
+                                        border = BorderStroke(1.dp, Gold.copy(alpha = 0.12f))) {
+                                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                            Text("✦", color = Gold, fontSize = 20.sp)
+                                            Spacer(Modifier.width(12.dp))
+                                            Column {
+                                                Text("Your studio is ready", color = TextColor, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                Text("Add a sale to start today's activity.", color = Muted, fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    recentActivity.forEach { record ->
+                                        RecentRecord(record) { tab = "History"; search = "" }
+                                    }
                                 }
                                 Spacer(Modifier.height(4.dp))
                             }
@@ -458,7 +495,7 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.5.0 • Offline Edition", color=TextColor)
+                                Text("Version 1.5.1 • Offline Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
                                 Text("A simple shop manager for sales, expenses, services and reports. No customers or bookings module.", color=Muted)
                                 Text("Your business records stay on this Android installation. There is no internet permission or automatic cloud sync.", color=Muted, fontSize=12.sp)
@@ -776,16 +813,121 @@ private fun RecentRecord(record: Record, onClick: () -> Unit) {
     }
 }
 
+
+@Composable
+private fun RevenueHero(salesAmount: String, salesCount: Int, onAddSale: () -> Unit) {
+    val palette = LocalBrandColors.current
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .background(Brush.horizontalGradient(listOf(palette.hero, palette.panel)), shape)
+            .border(1.dp, palette.gold.copy(alpha = 0.48f), shape)
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text("TODAY'S REVENUE", color = palette.muted, fontSize = 10.sp, letterSpacing = 1.4.sp)
+            Spacer(Modifier.height(5.dp))
+            Text(salesAmount, color = palette.gold, fontSize = 27.sp,
+                fontWeight = FontWeight.ExtraBold, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(3.dp))
+            Text(salesCount.toString() + if (salesCount == 1) " sale today" else " sales today",
+                color = palette.muted, fontSize = 11.sp)
+        }
+        Spacer(Modifier.width(10.dp))
+        Button(
+            onClick = onAddSale,
+            shape = RoundedCornerShape(12.dp),
+            contentPadding = PaddingValues(horizontal = 11.dp, vertical = 8.dp),
+            modifier = Modifier.height(42.dp)
+        ) {
+            Text("+ Sale", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun DashboardMiniMetric(
+    title: String, amount: String, symbol: String, modifier: Modifier = Modifier,
+    emphasize: Boolean = false
+) {
+    val colors = LocalBrandColors.current
+    Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = colors.panel),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.17f))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = colors.muted, fontSize = 10.sp, letterSpacing = 0.7.sp,
+                    modifier = Modifier.weight(1f), maxLines = 1)
+                Text(symbol, color = colors.gold, fontSize = 16.sp)
+            }
+            Spacer(Modifier.height(5.dp))
+            Text(amount, color = if (emphasize) colors.gold else colors.text,
+                fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+private fun PaymentSplitCard(cashAmount: Double, mpesaAmount: Double) {
+    val colors = LocalBrandColors.current
+    val total = cashAmount + mpesaAmount
+    val cashFraction = if (total > 0.0) (cashAmount / total).toFloat().coerceIn(0f, 1f) else 0f
+    Card(colors = CardDefaults.cardColors(containerColor = colors.panel),
+        shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.15f))) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
+            Text("TODAY'S PAYMENTS", color = colors.muted, fontSize = 10.sp, letterSpacing = 1.sp)
+            Spacer(Modifier.height(7.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Cash", color = colors.muted, fontSize = 11.sp)
+                    Text(money(cashAmount), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Text("M-Pesa", color = colors.muted, fontSize = 11.sp)
+                    Text(money(mpesaAmount), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Box(Modifier.fillMaxWidth().height(6.dp)
+                .background(colors.gold.copy(alpha = 0.19f), RoundedCornerShape(6.dp))) {
+                if (cashFraction > 0f) {
+                    Box(Modifier.fillMaxWidth(cashFraction).fillMaxHeight()
+                        .background(colors.gold, RoundedCornerShape(6.dp)))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun HomeTile(label: String, glyph: String, compact: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val palette = LocalBrandColors.current
-    Card(onClick=onClick, modifier=modifier.height(if (compact) 83.dp else 106.dp),
-        shape=RoundedCornerShape(17.dp), colors=CardDefaults.cardColors(containerColor=palette.panel)) {
-        Column(Modifier.fillMaxSize().padding(5.dp), horizontalAlignment=Alignment.CenterHorizontally,
-            verticalArrangement=Arrangement.Center) {
-            Text(glyph, color=palette.gold, fontSize=if (compact) 22.sp else 27.sp, fontWeight=FontWeight.Bold)
+    val colors = LocalBrandColors.current
+    Card(onClick = onClick,
+        modifier = modifier.height(if (compact) 76.dp else 92.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = colors.panel),
+        border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            Modifier.fillMaxSize().padding(vertical = 7.dp, horizontal = 4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                Modifier.size(if (compact) 29.dp else 36.dp)
+                    .background(colors.hero, RoundedCornerShape(11.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(glyph, color = colors.gold, fontSize = if (compact) 19.sp else 22.sp,
+                    fontWeight = FontWeight.Bold)
+            }
             Spacer(Modifier.height(7.dp))
-            Text(label, color=palette.text, fontSize=11.sp, maxLines=1, fontWeight=FontWeight.Medium)
+            Text(label, color = colors.text, fontSize = 11.sp,
+                maxLines = 1, fontWeight = FontWeight.SemiBold)
         }
     }
 }
