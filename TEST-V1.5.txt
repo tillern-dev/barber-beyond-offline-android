@@ -1,0 +1,30 @@
+BARBER & BEYOND MANAGER v1.5 — PREVIEW TESTING
+
+PREVIEW BUILD
+1. Open GitHub > Actions > "Build Android APK" for the preview branch.
+2. Open the latest successful run and download "barber-beyond-v1-5-PREVIEW-apk" from Artifacts.
+3. Extract the ZIP, then install app-debug.apk on Android 11 or later.
+4. The preview has package ID ke.elgonlabs.barberbeyond.manager.preview15. It installs separately from v1.4, and starts with a separate empty database.
+5. NEVER uninstall v1.4 or restore its only backup into a test build. Use disposable test records.
+
+TEST CHECKLIST
+[ ] App opens without crashing
+[ ] Dashboard shows one revenue card and six compact navigation tiles
+[ ] Sales, Expenses, Services, Reports, History and Backup open independently
+[ ] Settings gear opens a separate settings page, and Back navigation works
+[ ] Add, edit, delete Sales, Expenses, Services, then revisit each screen
+[ ] Service "Sell" flow pre-fills a sale
+[ ] Cash and M-Pesa amounts appear correctly in Reports
+[ ] Export JSON backup to a user-selected file; verify it exists
+[ ] Restore a disposable JSON test backup and verify records
+[ ] Profile and appearance preferences persist after app restart
+[ ] Optional PIN locks and unlocks and still works after restart
+[ ] Bottom footer reads "Powered by TILLERN LABS"
+[ ] App works in Airplane Mode and has no network dependency
+[ ] Existing v1.4 app and its original data are unaffected
+
+RELEASE SAFETY
+- Do NOT use the preview APK to replace a signed production app.
+- In-place production updates require the same package ID and original signing key, plus a higher versionCode.
+- This preview may have no PIN recovery and stores unencrypted JSON backups. Keep backups private.
+- Real-device checks are required even if GitHub Actions succeeds.

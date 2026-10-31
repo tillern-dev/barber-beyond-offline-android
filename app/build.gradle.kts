@@ -12,8 +12,8 @@ android {
         applicationId = "ke.elgonlabs.barberbeyond.manager"
         minSdk = 30
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 7
+        versionName = "1.5.1"
     }
     signingConfigs {
         create("barberRelease") {
@@ -29,8 +29,8 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            // Dedicated v1.4 preview: preserves existing v1.3 preview records during testing.
-            applicationIdSuffix = ".preview14"
+            // Isolated v1.5.1 preview: preserves v1.4 and v1.5 preview installations and records.
+            applicationIdSuffix = ".preview151"
             versionNameSuffix = "-preview"
         }
         getByName("release") {
