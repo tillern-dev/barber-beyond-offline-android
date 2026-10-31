@@ -1,6 +1,9 @@
 package ke.elgonlabs.barberbeyond
 
 import android.os.Bundle
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
 import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.SecretKeyFactory
@@ -41,6 +44,7 @@ import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
@@ -61,7 +65,7 @@ private val lightPalette = BrandPalette(
     Color(0xFF21201D), Color(0xFF635F58), Color(0xFFC62828), Color(0xFFF4EBD9)
 )
 private val LocalBrandColors = compositionLocalOf { darkPalette }
-private val settingsSections = listOf("Business Profile", "Appearance", "Security & Privacy", "Backup", "Preferences", "About Application")
+private val settingsSections = listOf("Business Profile", "Appearance", "Security & Privacy", "Notifications", "Backup", "Preferences", "About Application")
 private fun isSettingsDetail(page: String) = page in settingsSections
 
 private fun makePinHash(pin: String): String {
@@ -119,12 +123,12 @@ class MainActivity : ComponentActivity() {
         val db = Room.databaseBuilder(
             applicationContext, BusinessDatabase::class.java, "barber_beyond_local.db"
         ).build()
-        setContent { Manager(db.records()) }
+        setContent { Manager(db.records(), intent?.getBooleanExtra("bb_open_bookings", false) == true) }
     }
 }
 
 @Composable
-fun Manager(dao: RecordDao) {
+fun Manager(dao: RecordDao, startBookings: Boolean = false) {
     val records by dao.observeAll().collectAsState(initial = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -153,8 +157,10 @@ fun Manager(dao: RecordDao) {
     val TextColor = palette.text
     val Muted = palette.muted
     val Danger = palette.danger
-    var tab by remember { mutableStateOf("Dashboard") }
-    var bookingSession by remember { mutableStateOf<BookingSession?>(null) }
+    var tab by remember { mutableStateOf(if (startBookings) "Bookings" else "Dashboard") }
+    var bookingSession by remember { mutableStateOf(BookingAlertStore.readSession(context)) }
+    var notificationsEnabled by remember { mutableStateOf(BookingAlertStore.isEnabled(context)) }
+    var pendingBookingCount by remember { mutableIntStateOf(0) }
     var backupParent by remember { mutableStateOf("Dashboard") }
     fun goBack() { tab = if (tab == "Backup") backupParent else if (isSettingsDetail(tab)) "Settings" else "Dashboard" }
     BackHandler(enabled = tab != "Dashboard") { goBack() }
@@ -224,6 +230,41 @@ fun Manager(dao: RecordDao) {
                 } catch (e: Exception) {
                     notice("Restore file rejected: ${e.message ?: "invalid JSON"}")
                 }
+            }
+        }
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            notificationsEnabled = true
+            BookingAlertStore.enable(context, true, bookingSession)
+            notice("Website booking notifications enabled")
+        } else notice("Notification permission denied in Android settings")
+    }
+
+    // Refresh pending totals throughout the app while an admin session is active.
+    // Native notifications appear only after explicit opt-in and only for new requests.
+    LaunchedEffect(bookingSession?.access, notificationsEnabled) {
+        if (bookingSession != null) {
+            while (true) {
+                try {
+                    val current = bookingSession
+                    if (current != null) {
+                        val result = BookingApi.load(current)
+                        pendingBookingCount = result.second.count { it.status == "pending" }
+                        if (notificationsEnabled) {
+                            BookingAlertStore.saveSession(context, result.first)
+                            val count = BookingAlertStore.countNewPending(context, result.second)
+                            BookingSystemNotification.show(context, count)
+                        }
+                        if (result.first != current) bookingSession = result.first
+                    }
+                } catch (_: Exception) {
+                    // Network outages do not interrupt offline sales, reports or bookings UI.
+                }
+                delay(45_000L)
             }
         }
     }
@@ -339,7 +380,11 @@ fun Manager(dao: RecordDao) {
                                         Text("▦",color=Gold,fontSize=26.sp)
                                         Spacer(Modifier.width(12.dp))
                                         Column(Modifier.weight(1f)) {
-                                            Text("Website Bookings",fontWeight=FontWeight.ExtraBold,color=TextColor,fontSize=16.sp)
+                                            Text(
+                                                "Website Bookings" + if (pendingBookingCount > 0) "  •  ${pendingBookingCount}" else "",
+                                                fontWeight=FontWeight.ExtraBold,color=TextColor,fontSize=16.sp,
+                                                maxLines=1,overflow=TextOverflow.Ellipsis
+                                            )
                                             Text("Open online requests",color=Muted,fontWeight=FontWeight.Medium,fontSize=12.sp)
                                         }
                                         Text("›",color=Gold,fontWeight=FontWeight.Bold,fontSize=25.sp)
@@ -394,7 +439,12 @@ fun Manager(dao: RecordDao) {
                             }
                         }
                         "Bookings" -> {
-                            BookingInbox(bookingSession) { bookingSession = it }
+                            BookingInbox(bookingSession) {
+                                bookingSession = it
+                                BookingAlertStore.saveSession(context, it)
+                                if (it != null && notificationsEnabled) BookingAlertStore.schedule(context)
+                                if (it == null) pendingBookingCount = 0
+                            }
                         }
                         "Settings" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -402,9 +452,62 @@ fun Manager(dao: RecordDao) {
                                 SettingLink("Business Profile", "Shop details and contact", "▣") { tab = "Business Profile" }
                                 SettingLink("Appearance", "Dark Gold, light and compact layout", "◐") { tab = "Appearance" }
                                 SettingLink("Security & Privacy", "Offline app PIN", "♙") { tab = "Security & Privacy" }
+                                SettingLink("Notifications", "New booking alerts and background checks", "♧") { tab = "Notifications" }
                                 SettingLink("Backup & Restore", "Protect your records", "⇪") { backupParent="Settings"; tab = "Backup" }
                                 SettingLink("Preferences", "Default payment method", "≡") { tab = "Preferences" }
                                 SettingLink("About Application", "App version and developer", "ⓘ") { tab = "About Application" }
+                            }
+                        }
+                        "Notifications" -> {
+                            Column(
+                                Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("New booking alerts", color=TextColor,
+                                            fontWeight=FontWeight.Bold, fontSize=16.sp)
+                                        Text("Notify me of new website bookings",
+                                            color=Muted, fontSize=12.sp)
+                                    }
+                                    Switch(
+                                        checked=notificationsEnabled,
+                                        onCheckedChange={ enabled ->
+                                            if (enabled && Build.VERSION.SDK_INT >= 33 &&
+                                                context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                                            ) {
+                                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            } else {
+                                                notificationsEnabled=enabled
+                                                BookingAlertStore.enable(context, enabled, bookingSession)
+                                                notice(if (enabled) "Alerts enabled" else "Alerts disabled")
+                                            }
+                                        }
+                                    )
+                                }
+                                HorizontalDivider()
+                                Text("HOW IT WORKS", color=Gold, fontWeight=FontWeight.Bold, fontSize=11.sp)
+                                Text(
+                                    "While the app is open, new website bookings are checked about every 45 seconds. " +
+                                        "With alerts enabled and signed in, Android can check periodically in the background, " +
+                                        "usually no sooner than 15 minutes. Internet access is required.",
+                                    color=TextColor, fontSize=13.sp
+                                )
+                                Text(
+                                    "Instant notifications with the app closed require a future Firebase push-service configuration. " +
+                                        "MIUI battery restrictions may delay background checks.",
+                                    color=Muted, fontSize=12.sp
+                                )
+                                Text(
+                                    if (bookingSession == null) "Not connected. Sign in to Bookings to activate monitoring."
+                                    else "Admin connected • Pending requests: ${pendingBookingCount}",
+                                    color=Gold, fontSize=13.sp, fontWeight=FontWeight.SemiBold
+                                )
+                                OutlinedButton(onClick={tab="Bookings"},modifier=Modifier.fillMaxWidth()) {
+                                    Text("Open Website Bookings")
+                                }
+                                Text("Notifications never display customer names or phone numbers on the lock screen.",
+                                    color=Muted,fontSize=11.sp)
                             }
                         }
                         "Business Profile" -> {
@@ -515,7 +618,7 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.6.3 • Offline-First Edition", color=TextColor)
+                                Text("Version 1.7.0 • Offline-First Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
                                 Text("Offline sales, expenses, services and reports, plus a secure online booking inbox.", color=Muted)
                                 Text("Local business records remain on this device. Booking requests require internet and an authorized Supabase admin account.", color=Muted, fontSize=12.sp)
