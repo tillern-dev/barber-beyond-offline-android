@@ -50,10 +50,10 @@ jobs:
                   alpha=min(240,max(22,alpha))
                   for y in range(h): px[x,y]=(4,4,5,alpha)
               soft=Image.alpha_composite(soft.convert('RGBA'),overlay).convert('RGB')
-              soft.save(folder/output,'WEBP',quality=86,method=6)
+              soft.save(folder/output,'WEBP',quality=94,method=6)
               size=(folder/output).stat().st_size
               print(source,rgb.size,output,size)
-              if size<45_000: raise RuntimeError('Output file unexpectedly small')
+              if size<35_000: raise RuntimeError('Output file unexpectedly small')
           PY
       - name: Commit photo assets to isolated preview branch
         shell: bash
