@@ -310,9 +310,9 @@ fun Manager(dao: RecordDao) {
                                     DashboardMiniMetric("EST. PROFIT", money(todaySales - todayExpenses), "↗", Modifier.weight(1f), true)
                                 }
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Quick access", color = TextColor, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                                    Text("Quick access", color = TextColor, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold,
                                         modifier = Modifier.weight(1f))
-                                    Text("YOUR TOOLS", color = Muted, fontSize = 9.sp, letterSpacing = 1.sp)
+                                    Text("YOUR TOOLS", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
                                 }
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                     HomeTile("Sales", "＋", compactTiles, Modifier.weight(1f)) { tab = "Sales"; search = "" }
@@ -339,18 +339,18 @@ fun Manager(dao: RecordDao) {
                                         Text("▦",color=Gold,fontSize=26.sp)
                                         Spacer(Modifier.width(12.dp))
                                         Column(Modifier.weight(1f)) {
-                                            Text("Website Bookings",fontWeight=FontWeight.Bold,color=TextColor,fontSize=15.sp)
-                                            Text("Open online requests",color=Muted,fontSize=11.sp)
+                                            Text("Website Bookings",fontWeight=FontWeight.ExtraBold,color=TextColor,fontSize=16.sp)
+                                            Text("Open online requests",color=Muted,fontWeight=FontWeight.Medium,fontSize=12.sp)
                                         }
                                         Text("›",color=Gold,fontWeight=FontWeight.Bold,fontSize=25.sp)
                                     }
                                 }
                                 PaymentSplitCard(cashToday, mpesaToday)
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Recent activity", color = TextColor, fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                                    Text("Recent activity", color = TextColor, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold,
                                         modifier = Modifier.weight(1f))
                                     TextButton(onClick = { tab = "History"; search = "" }) {
-                                        Text("View all ›", color = Gold, fontSize = 12.sp)
+                                        Text("View all ›", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                                 if (recentActivity.isEmpty()) {
@@ -515,7 +515,7 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.6.2 • Offline-First Edition", color=TextColor)
+                                Text("Version 1.6.3 • Offline-First Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
                                 Text("Offline sales, expenses, services and reports, plus a secure online booking inbox.", color=Muted)
                                 Text("Local business records remain on this device. Booking requests require internet and an authorized Supabase admin account.", color=Muted, fontSize=12.sp)
@@ -952,14 +952,14 @@ private fun RevenueHero(salesAmount: String, salesCount: Int, onAddSale: () -> U
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text("TODAY'S REVENUE", color = palette.muted, fontSize = 10.sp, letterSpacing = 1.4.sp)
+            Text("TODAY'S REVENUE", color = palette.text, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(Modifier.height(5.dp))
             Text(salesAmount, color = palette.gold, fontSize = 27.sp,
                 fontWeight = FontWeight.ExtraBold, maxLines = 1,
                 overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(3.dp))
             Text(salesCount.toString() + if (salesCount == 1) " sale today" else " sales today",
-                color = palette.muted, fontSize = 11.sp)
+                color = palette.muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.width(10.dp))
         Button(
@@ -968,7 +968,7 @@ private fun RevenueHero(salesAmount: String, salesCount: Int, onAddSale: () -> U
             contentPadding = PaddingValues(horizontal = 11.dp, vertical = 8.dp),
             modifier = Modifier.height(42.dp)
         ) {
-            Text("+ Sale", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text("+ Sale", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
         }
     }
 }
@@ -984,13 +984,13 @@ private fun DashboardMiniMetric(
         border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.48f))) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = colors.muted, fontSize = 10.sp, letterSpacing = 0.7.sp,
+                Text(title, color = colors.text, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 0.5.sp,
                     modifier = Modifier.weight(1f), maxLines = 1)
                 Text(symbol, color = colors.gold, fontSize = 16.sp)
             }
             Spacer(Modifier.height(5.dp))
             Text(amount, color = if (emphasize) colors.gold else colors.text,
-                fontSize = 17.sp, fontWeight = FontWeight.Bold,
+                fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -1004,16 +1004,16 @@ private fun PaymentSplitCard(cashAmount: Double, mpesaAmount: Double) {
     Card(colors = CardDefaults.cardColors(containerColor = colors.panel),
         shape = RoundedCornerShape(15.dp), border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.15f))) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp)) {
-            Text("TODAY'S PAYMENTS", color = colors.muted, fontSize = 10.sp, letterSpacing = 1.sp)
+            Text("TODAY'S PAYMENTS", color = colors.text, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 0.6.sp)
             Spacer(Modifier.height(7.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Cash", color = colors.muted, fontSize = 11.sp)
-                    Text(money(cashAmount), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Cash", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(money(cashAmount), color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                    Text("M-Pesa", color = colors.muted, fontSize = 11.sp)
-                    Text(money(mpesaAmount), color = colors.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("M-Pesa", color = colors.muted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(money(mpesaAmount), color = colors.text, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -1035,7 +1035,7 @@ private fun HomeTile(label: String, glyph: String, compact: Boolean, modifier: M
         modifier = modifier.height(if (compact) 76.dp else 92.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = colors.hero),
-        border = BorderStroke(1.1.dp, colors.gold.copy(alpha = 0.59f)),
+        border = BorderStroke(1.35.dp, colors.gold.copy(alpha = 0.75f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Column(
@@ -1048,12 +1048,12 @@ private fun HomeTile(label: String, glyph: String, compact: Boolean, modifier: M
                     .background(colors.hero, RoundedCornerShape(11.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(glyph, color = colors.gold, fontSize = if (compact) 19.sp else 22.sp,
-                    fontWeight = FontWeight.Bold)
+                Text(glyph, color = colors.gold, fontSize = if (compact) 21.sp else 24.sp,
+                    fontWeight = FontWeight.ExtraBold)
             }
             Spacer(Modifier.height(7.dp))
-            Text(label, color = colors.text, fontSize = 11.sp,
-                maxLines = 1, fontWeight = FontWeight.SemiBold)
+            Text(label, color = colors.text, fontSize = if (compact) 11.sp else 12.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.ExtraBold)
         }
     }
 }
