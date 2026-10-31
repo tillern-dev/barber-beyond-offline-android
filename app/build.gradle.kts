@@ -12,8 +12,8 @@ android {
         applicationId = "ke.elgonlabs.barberbeyond.manager"
         minSdk = 30
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.6.3"
+        versionCode = 12
+        versionName = "1.7.0"
     }
     signingConfigs {
         create("barberRelease") {
@@ -29,8 +29,8 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            // Isolated v1.6.3 preview: keeps previous installations and records untouched.
-            applicationIdSuffix = ".preview163"
+            // Isolated v1.7 notification preview, keeping prior installations untouched.
+            applicationIdSuffix = ".preview170"
             versionNameSuffix = "-preview"
         }
         getByName("release") {
@@ -44,6 +44,7 @@ android {
 }
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui:1.7.5")
     implementation("androidx.compose.material3:material3:1.3.1")
