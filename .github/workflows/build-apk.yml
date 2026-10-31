@@ -19,6 +19,17 @@ jobs:
         with:
           gradle-version: '8.9'
       - run: gradle --no-daemon assembleDebug
+      - name: Verify debug APK signing, alignment and compatibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          TOOLS_DIR="$ANDROID_HOME/build-tools/35.0.0"
+          "$TOOLS_DIR/apksigner" verify --verbose --print-certs --min-sdk-version 30 "$APK"
+          "$TOOLS_DIR/zipalign" -c -v 4 "$APK"
+          "$TOOLS_DIR/aapt" dump badging "$APK" | grep -E "^(package:|sdkVersion:|targetSdkVersion:|application-label:|native-code:)"
+          sha256sum "$APK"
       - uses: actions/upload-artifact@v4
         with:
           name: barber-beyond-v1-6-1-LUMINOUS-PREVIEW-apk
