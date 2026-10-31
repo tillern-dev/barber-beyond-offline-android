@@ -118,7 +118,7 @@ private fun SplashView(errorMessage: String?, onRetry: () -> Unit) {
                 }
             }
             Text(
-                "Powered by ELGON LABS",
+                "Powered by TILLERN LABS",
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 26.dp),
                 color = muted,
                 fontSize = 11.sp
