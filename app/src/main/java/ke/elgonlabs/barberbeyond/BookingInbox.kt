@@ -38,11 +38,11 @@ private val panelBooking = Color(0xFF241C14)
 internal data class BookingSession(val access: String, val refresh: String, val expiresAt: Long)
 internal data class WebBooking(
     val id: String, val customer: String, val phone: String, val service: String,
-    val at: String, val notes: String, val status: String
+    val at: String, val notes: String, val status: String, val createdAt: String
 )
 internal data class WebService(val title: String, val price: Double)
 
-private object BookingApi {
+internal object BookingApi {
     private fun request(path: String, method: String = "GET", token: String? = null, data: String? = null): String {
         val conn = URL(SUPABASE + path).openConnection() as HttpURLConnection
         try {
@@ -85,12 +85,13 @@ private object BookingApi {
         withContext(Dispatchers.IO) {
             val active = valid(session)
             val bookingData = JSONArray(request(
-                "/rest/v1/booking_requests?select=id,customer_name,phone,service_id,starts_at,notes,status&order=created_at.desc&limit=60",
+                "/rest/v1/booking_requests?select=id,customer_name,phone,service_id,starts_at,notes,status,created_at&order=created_at.desc&limit=60",
                 token = active.access))
             val rows = (0 until bookingData.length()).map { i ->
                 val b = bookingData.getJSONObject(i)
                 WebBooking(b.getString("id"),b.optString("customer_name"),b.optString("phone"),
-                    b.optString("service_id"),b.optString("starts_at"),b.optString("notes"),b.optString("status"))
+                    b.optString("service_id"),b.optString("starts_at"),b.optString("notes"),b.optString("status"),
+                    b.optString("created_at"))
             }
             val serviceData = JSONArray(request(
                 "/rest/v1/services?select=id,name,price_kes&active=eq.true&limit=200",
