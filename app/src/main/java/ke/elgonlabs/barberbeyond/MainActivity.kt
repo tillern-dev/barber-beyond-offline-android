@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.font.FontWeight
@@ -40,9 +42,9 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
-private val Gold = Color(0xFFE8BD64)
-private val Dark = Color(0xFF101011)
-private val Panel = Color(0xFF22211F)
+private val Gold = Color(0xFFFFD36E)
+private val Dark = Color(0xFF0B0B0C)
+private val Panel = Color(0xFF211D18)
 private val TextColor = Color(0xFFF6F4EF)
 private val Muted = Color(0xFFB6B4B0)
 private val Danger = Color(0xFFFF8A80)
@@ -50,7 +52,7 @@ private data class BrandPalette(
     val gold: Color, val dark: Color, val panel: Color,
     val text: Color, val muted: Color, val danger: Color, val hero: Color
 )
-private val darkPalette = BrandPalette(Gold, Dark, Panel, TextColor, Muted, Danger, Color(0xFF30261A))
+private val darkPalette = BrandPalette(Gold, Dark, Panel, TextColor, Muted, Danger, Color(0xFF443018))
 private val lightPalette = BrandPalette(
     Color(0xFF7B580F), Color(0xFFF9F7F1), Color(0xFFFFFFFF),
     Color(0xFF21201D), Color(0xFF635F58), Color(0xFFC62828), Color(0xFFF4EBD9)
@@ -298,17 +300,7 @@ fun Manager(dao: RecordDao) {
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Spacer(Modifier.height(2.dp))
-                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text("Welcome back", color = Muted, fontSize = 12.sp)
-                                        Text("Your shop today", color = TextColor, fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
-                                    }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(SimpleDateFormat("EEE, dd MMM", Locale.ENGLISH).format(Date()),
-                                            color = Gold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                        Text("● OFFLINE", color = Muted, fontSize = 9.sp)
-                                    }
-                                }
+                                BarberHeroBanner()
                                 RevenueHero(money(todaySales), todayCount) { openEditor("Sales") }
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     DashboardMiniMetric("EXPENSES", money(todayExpenses), "−", Modifier.weight(1f), false)
@@ -327,7 +319,28 @@ fun Manager(dao: RecordDao) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                     HomeTile("Reports", "▤", compactTiles, Modifier.weight(1f)) { tab = "Reports" }
                                     HomeTile("History", "◷", compactTiles, Modifier.weight(1f)) { tab = "History"; search = "" }
-                                    HomeTile("Bookings", "▦", compactTiles, Modifier.weight(1f)) { tab = "Bookings" }
+                                    HomeTile("Backup", "⇧", compactTiles, Modifier.weight(1f)) { backupParent = "Dashboard"; tab = "Backup" }
+                                }
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    onClick = { tab = "Bookings" },
+                                    shape = RoundedCornerShape(16.dp),
+                                    border = BorderStroke(1.5.dp, Gold.copy(alpha = .8f)),
+                                    colors = CardDefaults.cardColors(containerColor = Panel),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
+                                ) {
+                                    Row(Modifier.fillMaxWidth().background(
+                                        Brush.horizontalGradient(listOf(Color(0xFF4C3317), Panel))
+                                    ).padding(horizontal=16.dp,vertical=14.dp),
+                                        verticalAlignment=Alignment.CenterVertically) {
+                                        Text("▦",color=Gold,fontSize=26.sp)
+                                        Spacer(Modifier.width(12.dp))
+                                        Column(Modifier.weight(1f)) {
+                                            Text("Website Bookings",fontWeight=FontWeight.Bold,color=TextColor,fontSize=15.sp)
+                                            Text("Open online requests",color=Muted,fontSize=11.sp)
+                                        }
+                                        Text("›",color=Gold,fontWeight=FontWeight.Bold,fontSize=25.sp)
+                                    }
                                 }
                                 PaymentSplitCard(cashToday, mpesaToday)
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -499,7 +512,7 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.6.0 • Offline-First Edition", color=TextColor)
+                                Text("Version 1.6.1 • Offline-First Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
                                 Text("Offline sales, expenses, services and reports, plus a secure online booking inbox.", color=Muted)
                                 Text("Local business records remain on this device. Booking requests require internet and an authorized Supabase admin account.", color=Muted, fontSize=12.sp)
@@ -819,6 +832,30 @@ private fun RecentRecord(record: Record, onClick: () -> Unit) {
 
 
 @Composable
+private fun BarberHeroBanner() {
+    val c = LocalBrandColors.current
+    val shape = RoundedCornerShape(18.dp)
+    Box(Modifier.fillMaxWidth().height(141.dp)
+        .clip(shape).border(1.4.dp,c.gold.copy(alpha=.75f),shape)) {
+        Image(
+            painter = painterResource(R.drawable.barber_hero),
+            contentDescription = "Barber providing a haircut at Barber & Beyond Hair Studio",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
+            listOf(Color(0xEB080809),Color(0xB2080809),Color(0x18080809))
+        )))
+        Column(Modifier.align(Alignment.CenterStart).padding(start=18.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+            Text("WELCOME BACK",fontSize=10.sp,color=c.gold,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
+            Text("Shop Overview",fontSize=24.sp,color=Color.White,fontWeight=FontWeight.ExtraBold)
+            Text(SimpleDateFormat("EEE, dd MMM yyyy",Locale.ENGLISH).format(Date()),
+                fontSize=12.sp,color=Color(0xFFFFE7B7))
+        }
+    }
+}
+
+@Composable
 private fun RevenueHero(salesAmount: String, salesCount: Int, onAddSale: () -> Unit) {
     val palette = LocalBrandColors.current
     val shape = RoundedCornerShape(20.dp)
@@ -859,7 +896,7 @@ private fun DashboardMiniMetric(
     val colors = LocalBrandColors.current
     Card(modifier = modifier, colors = CardDefaults.cardColors(containerColor = colors.panel),
         shape = RoundedCornerShape(15.dp),
-        border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.17f))) {
+        border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.48f))) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 12.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, color = colors.muted, fontSize = 10.sp, letterSpacing = 0.7.sp,
@@ -912,9 +949,9 @@ private fun HomeTile(label: String, glyph: String, compact: Boolean, modifier: M
     Card(onClick = onClick,
         modifier = modifier.height(if (compact) 76.dp else 92.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.panel),
-        border = BorderStroke(1.dp, colors.gold.copy(alpha = 0.18f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = colors.hero),
+        border = BorderStroke(1.1.dp, colors.gold.copy(alpha = 0.59f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp)
     ) {
         Column(
             Modifier.fillMaxSize().padding(vertical = 7.dp, horizontal = 4.dp),

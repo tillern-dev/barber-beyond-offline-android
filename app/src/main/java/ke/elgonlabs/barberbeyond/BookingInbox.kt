@@ -31,9 +31,9 @@ import java.util.Locale
 // Never put a secret or service_role key in this Android application.
 private const val SUPABASE = "https://pgypziuvtaiywtdsyxyk.supabase.co"
 private const val PUBLISHABLE_KEY = "sb_publishable_l_eusRTeUHRLZ30a1BFosQ_vWPTRXOu"
-private val goldBooking = Color(0xFFE8BD64)
+private val goldBooking = Color(0xFFFFD36E)
 private val mutedBooking = Color(0xFFB6B4B0)
-private val panelBooking = Color(0xFF22211F)
+private val panelBooking = Color(0xFF241C14)
 
 internal data class BookingSession(val access: String, val refresh: String, val expiresAt: Long)
 internal data class WebBooking(
@@ -101,6 +101,17 @@ private object BookingApi {
             }
             Triple(active, rows, services)
         }
+    suspend fun updatePrice(session: BookingSession, serviceId: String, priceKes: Double): BookingSession =
+        withContext(Dispatchers.IO) {
+            require(serviceId.matches(Regex("[0-9a-fA-F-]{36}")))
+            require(priceKes.isFinite() && priceKes >= 0 && priceKes <= 1_000_000)
+            val active = valid(session)
+            val result = JSONArray(request(
+                "/rest/v1/services?id=eq." + serviceId + "&select=id",
+                "PATCH",active.access,JSONObject().put("price_kes",priceKes).toString()))
+            require(result.length()==1) { "Price could not be saved. Check admin permissions." }
+            active
+        }
     suspend fun decide(session: BookingSession, id: String, status: String): BookingSession =
         withContext(Dispatchers.IO) {
             require(status == "confirmed" || status == "declined")
@@ -129,6 +140,7 @@ internal fun BookingInbox(session: BookingSession?, onSession: (BookingSession?)
     var rows by remember { mutableStateOf<List<WebBooking>>(emptyList()) }
     var services by remember { mutableStateOf<Map<String, WebService>>(emptyMap()) }
     var pendingOnly by remember { mutableStateOf(true) }
+    var managePrices by remember { mutableStateOf(false) }
     var decision by remember { mutableStateOf<Pair<WebBooking,String>?>(null) }
 
     suspend fun refresh(current: BookingSession) {
@@ -175,13 +187,57 @@ internal fun BookingInbox(session: BookingSession?, onSession: (BookingSession?)
                 color=mutedBooking,fontSize=11.sp)
         } else {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("Online requests",fontWeight=FontWeight.Bold,color=goldBooking,
+                Text("Website Bookings",fontWeight=FontWeight.Bold,color=goldBooking,
                     modifier=Modifier.weight(1f))
                 TextButton(enabled=!busy,onClick={scope.launch{refresh(session)}}){Text("Refresh")}
                 TextButton(onClick={onSession(null);rows=emptyList();notice="Signed out"}){
                     Text("Sign out",color=mutedBooking)
                 }
             }
+            OutlinedButton(onClick = { managePrices = !managePrices }, modifier=Modifier.fillMaxWidth(),
+                colors=ButtonDefaults.outlinedButtonColors(contentColor=goldBooking)) {
+                Text(if(managePrices) "← Back to booking requests" else "✎ Manage website service prices")
+            }
+            if (managePrices) {
+                Text("LIVE WEBSITE PRICES",color=goldBooking,fontSize=14.sp,fontWeight=FontWeight.Bold)
+                Text("Edit the online prices customers see. Changes appear on the booking website after refresh. Your offline service prices are not changed.",
+                    color=mutedBooking,fontSize=12.sp)
+                services.toList().sortedBy { it.second.title }.forEach { (id, service) ->
+                    var amount by remember(id, service.price) {
+                        mutableStateOf(if(service.price % 1.0 == 0.0) service.price.toLong().toString() else service.price.toString())
+                    }
+                    Card(colors=CardDefaults.cardColors(containerColor=panelBooking),
+                        border=BorderStroke(1.1.dp,goldBooking.copy(alpha=.54f)),
+                        shape=RoundedCornerShape(14.dp)) {
+                        Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                            Text(service.title,color=Color.White,fontWeight=FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                                OutlinedTextField(value=amount,onValueChange={amount=it.take(12)},
+                                    label={Text("Price in KES")},singleLine=true,modifier=Modifier.weight(1f),
+                                    keyboardOptions=androidx.compose.foundation.text.KeyboardOptions(
+                                        keyboardType=androidx.compose.ui.text.input.KeyboardType.Decimal))
+                                Spacer(Modifier.width(8.dp))
+                                Button(enabled=!busy,onClick={
+                                    val number=amount.toDoubleOrNull()
+                                    if(number==null || !number.isFinite() || number < 0 || number > 1_000_000)
+                                        notice="Enter a valid KES price from 0 to 1,000,000."
+                                    else scope.launch {
+                                        busy=true
+                                        try {
+                                            val updated=BookingApi.updatePrice(session,id,number)
+                                            onSession(updated)
+                                            refresh(updated)
+                                            notice="Website price saved for " + service.title
+                                        }catch(e:Exception){notice=e.message?:"Could not save price"}
+                                        finally {busy=false}
+                                    }
+                                }) { Text("Save") }
+                            }
+                            Text("Service ID: "+id.take(8),color=mutedBooking,fontSize=10.sp)
+                        }
+                    }
+                }
+            } else {
             Row(horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 FilterChip(selected=pendingOnly,onClick={pendingOnly=true},label={Text("Pending")})
                 FilterChip(selected=!pendingOnly,onClick={pendingOnly=false},label={Text("All")})
@@ -193,19 +249,19 @@ internal fun BookingInbox(session: BookingSession?, onSession: (BookingSession?)
                 val service=services[booking.service]
                 Card(colors=CardDefaults.cardColors(containerColor=panelBooking),
                     shape=RoundedCornerShape(15.dp),
-                    border=BorderStroke(1.dp,goldBooking.copy(alpha=0.25f))) {
+                    border=BorderStroke(1.4.dp,goldBooking.copy(alpha=0.64f))) {
                     Column(Modifier.fillMaxWidth().padding(14.dp),
                         verticalArrangement=Arrangement.spacedBy(6.dp)) {
                         Row(Modifier.fillMaxWidth()) {
-                            Text(booking.customer,color=Color.White,fontWeight=FontWeight.Bold,
+                            Text("◉  " + booking.customer,color=Color.White,fontWeight=FontWeight.Bold,
                                 modifier=Modifier.weight(1f),maxLines=1)
                             Text(booking.status.uppercase(Locale.US),color=goldBooking,fontSize=10.sp)
                         }
-                        Text((service?.title?:"Selected service") + (service?.let {
+                        Text("✂  " + (service?.title?:"Selected service") + (service?.let {
                             " • KES " + "%.0f".format(Locale.US,it.price)
                         }?:""),color=goldBooking,fontSize=12.sp)
-                        Text(localBookingTime(booking.at),color=Color.White,fontSize=12.sp)
-                        Text("Phone: "+booking.phone,color=mutedBooking,fontSize=12.sp)
+                        Text("▦  " + localBookingTime(booking.at),color=Color.White,fontSize=12.sp)
+                        Text("☎  " + booking.phone,color=mutedBooking,fontSize=12.sp)
                         if(booking.notes.isNotBlank()&&booking.notes!="null")
                             Text(booking.notes,color=mutedBooking,fontSize=12.sp)
                         if(booking.status=="pending") Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -216,6 +272,7 @@ internal fun BookingInbox(session: BookingSession?, onSession: (BookingSession?)
                         }
                     }
                 }
+            }
             }
         }
         if(notice.isNotBlank()) Text(notice,color=mutedBooking,fontSize=12.sp)
