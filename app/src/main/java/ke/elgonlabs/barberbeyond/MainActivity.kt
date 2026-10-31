@@ -18,6 +18,8 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.*
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
@@ -512,7 +515,7 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.6.1 • Offline-First Edition", color=TextColor)
+                                Text("Version 1.6.2 • Offline-First Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
                                 Text("Offline sales, expenses, services and reports, plus a secure online booking inbox.", color=Muted)
                                 Text("Local business records remain on this device. Booking requests require internet and an authorized Supabase admin account.", color=Muted, fontSize=12.sp)
@@ -831,26 +834,108 @@ private fun RecentRecord(record: Record, onClick: () -> Unit) {
 }
 
 
+private data class HeroSlide(val imageId: Int, val description: String, val label: String)
+private val dashboardHeroSlides = listOf(
+    HeroSlide(R.drawable.hero_grooming, "Barber providing professional beard grooming", "BEARD GROOMING"),
+    HeroSlide(R.drawable.hero_fade, "Barber cutting a modern fade haircut", "PRECISION HAIRCUTS"),
+    HeroSlide(R.drawable.hero_studio, "Premium barber shop chairs and grooming stations", "PREMIUM BARBER STUDIO")
+)
+
 @Composable
 private fun BarberHeroBanner() {
-    val c = LocalBrandColors.current
+    val palette = LocalBrandColors.current
+    val pagerState = rememberPagerState(pageCount = { dashboardHeroSlides.size })
+    val scope = rememberCoroutineScope()
     val shape = RoundedCornerShape(18.dp)
-    Box(Modifier.fillMaxWidth().height(141.dp)
-        .clip(shape).border(1.4.dp,c.gold.copy(alpha=.75f),shape)) {
-        Image(
-            painter = painterResource(R.drawable.barber_hero),
-            contentDescription = "Barber providing a haircut at Barber & Beyond Hair Studio",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(
-            listOf(Color(0xEB080809),Color(0xB2080809),Color(0x18080809))
-        )))
-        Column(Modifier.align(Alignment.CenterStart).padding(start=18.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text("WELCOME BACK",fontSize=10.sp,color=c.gold,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
-            Text("Shop Overview",fontSize=24.sp,color=Color.White,fontWeight=FontWeight.ExtraBold)
-            Text(SimpleDateFormat("EEE, dd MMM yyyy",Locale.ENGLISH).format(Date()),
-                fontSize=12.sp,color=Color(0xFFFFE7B7))
+
+    // Auto-advance every five seconds while Dashboard is on screen; swiping works natively.
+    LaunchedEffect(pagerState) {
+        while (true) {
+            delay(5_000L)
+            if (!pagerState.isScrollInProgress) {
+                val nextPage = (pagerState.currentPage + 1) % dashboardHeroSlides.size
+                pagerState.animateScrollToPage(nextPage)
+            }
+        }
+    }
+
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Box(
+            Modifier.fillMaxWidth().height(162.dp)
+                .clip(shape)
+                .border(1.5.dp, palette.gold.copy(alpha = .88f), shape)
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1
+            ) { page ->
+                val slide = dashboardHeroSlides[page]
+                Box(Modifier.fillMaxSize()) {
+                    Image(
+                        painter = painterResource(slide.imageId),
+                        contentDescription = slide.description,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Box(Modifier.fillMaxSize().background(
+                        Brush.horizontalGradient(
+                            listOf(Color(0xCA070708), Color(0x85070708), Color(0x15070708))
+                        )
+                    ))
+                    Column(
+                        Modifier.align(Alignment.CenterStart).padding(start = 17.dp, end = 22.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "WELCOME BACK",
+                            fontSize = 10.sp, color = palette.gold,
+                            fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp
+                        )
+                        Text(
+                            "Shop Overview", fontSize = 23.sp, color = Color.White,
+                            fontWeight = FontWeight.ExtraBold, maxLines = 1
+                        )
+                        Text(
+                            SimpleDateFormat("EEE, dd MMM yyyy", Locale.ENGLISH).format(Date()),
+                            fontSize = 12.sp, color = Color(0xFFFFE7B7)
+                        )
+                    }
+                    Text(
+                        slide.label,
+                        color = Color(0xFFFFD77D), fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp, letterSpacing = .5.sp, maxLines = 1,
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                            .padding(end = 12.dp, bottom = 11.dp)
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            dashboardHeroSlides.forEachIndexed { index, _ ->
+                Box(
+                    Modifier.size(width = 30.dp, height = 19.dp)
+                        .clickable {
+                            scope.launch { pagerState.animateScrollToPage(index) }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        Modifier
+                            .width(if (index == pagerState.currentPage) 21.dp else 7.dp)
+                            .height(7.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (index == pagerState.currentPage) palette.gold
+                                else palette.muted.copy(alpha = .48f)
+                            )
+                    )
+                }
+            }
         }
     }
 }
