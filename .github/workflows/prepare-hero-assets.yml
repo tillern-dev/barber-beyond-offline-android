@@ -1,0 +1,68 @@
+name: Prepare high-resolution barbershop hero assets
+on:
+  push:
+    branches: ['feature/v1.6.2-hero-carousel']
+    paths: ['.github/workflows/prepare-hero-assets.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  create-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/v1.6.2-hero-carousel
+          persist-credentials: true
+      - name: Fetch licensed images and create offline WebP banners
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pillow==11.3.0
+          mkdir -p /tmp/hero-source app/src/main/res/drawable-nodpi
+          curl -fLsS --retry 3 --connect-timeout 10 --max-time 60 -A 'Mozilla/5.0'             'https://images.pexels.com/photos/8867490/pexels-photo-8867490.jpeg'             -o /tmp/hero-source/grooming.jpg
+          curl -fLsS --retry 3 --connect-timeout 10 --max-time 60 -A 'Mozilla/5.0'             'https://images.pexels.com/photos/7447148/pexels-photo-7447148.jpeg'             -o /tmp/hero-source/fade.jpg
+          curl -fLsS --retry 3 --connect-timeout 10 --max-time 60 -A 'Mozilla/5.0'             'https://images.pexels.com/photos/19664872/pexels-photo-19664872.jpeg'             -o /tmp/hero-source/studio.jpg
+          python3 - <<'PY'
+          from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+          from pathlib import Path
+          folder=Path('app/src/main/res/drawable-nodpi')
+          cases=[
+              ('grooming', 'hero_grooming.webp', 0.60),
+              ('fade', 'hero_fade.webp', 0.48),
+              ('studio', 'hero_studio.webp', 0.53),
+          ]
+          for source,output,vertical_focus in cases:
+              with Image.open('/tmp/hero-source/'+source+'.jpg') as original:
+                  rgb=ImageOps.exif_transpose(original).convert('RGB')
+              if min(rgb.size)<700:
+                  raise RuntimeError(source+' source below minimum quality threshold: '+str(rgb.size))
+              w,h=1440,620
+              soft=ImageOps.fit(rgb,(w,h),method=Image.Resampling.LANCZOS,centering=(.5,vertical_focus)).filter(ImageFilter.GaussianBlur(12))
+              foreground=ImageOps.fit(rgb,(950,h),method=Image.Resampling.LANCZOS,centering=(.5,vertical_focus))
+              soft.paste(foreground,(490,0))
+              soft=ImageEnhance.Contrast(soft).enhance(1.07)
+              soft=ImageEnhance.Color(soft).enhance(1.07)
+              overlay=Image.new('RGBA',(w,h))
+              px=overlay.load()
+              for x in range(w):
+                  alpha=int(216*(1-max(0,min(1,x/(w*.78)))))+int(33*max(0,min(1,x/(w*.78))))
+                  alpha=min(240,max(22,alpha))
+                  for y in range(h): px[x,y]=(4,4,5,alpha)
+              soft=Image.alpha_composite(soft.convert('RGBA'),overlay).convert('RGB')
+              soft.save(folder/output,'WEBP',quality=86,method=6)
+              size=(folder/output).stat().st_size
+              print(source,rgb.size,output,size)
+              if size<45_000: raise RuntimeError('Output file unexpectedly small')
+          PY
+      - name: Commit photo assets to isolated preview branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/res/drawable-nodpi/hero_*.webp
+          if ! git diff --cached --quiet; then
+            git commit -m 'Add three high-resolution offline-ready barber hero photos'
+            git push origin HEAD:feature/v1.6.2-hero-carousel
+          fi
