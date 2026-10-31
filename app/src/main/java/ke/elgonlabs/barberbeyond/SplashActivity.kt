@@ -64,7 +64,10 @@ class SplashActivity : ComponentActivity() {
                     // Small minimum display time for a readable logo, not fake progress.
                     val elapsed = SystemClock.elapsedRealtime() - started
                     if (elapsed < 700L) delay(700L - elapsed)
-                    startActivity(Intent(this@SplashActivity, MainActivity::class.java))
+                    startActivity(Intent(this@SplashActivity, MainActivity::class.java).apply {
+                        putExtra("bb_open_bookings",
+                            intent?.getBooleanExtra("bb_open_bookings", false) == true)
+                    })
                     finish()
                 } catch (cancelled: CancellationException) {
                     throw cancelled
