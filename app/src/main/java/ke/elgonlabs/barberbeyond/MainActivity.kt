@@ -149,6 +149,7 @@ fun Manager(dao: RecordDao) {
     val Muted = palette.muted
     val Danger = palette.danger
     var tab by remember { mutableStateOf("Dashboard") }
+    var bookingSession by remember { mutableStateOf<BookingSession?>(null) }
     var backupParent by remember { mutableStateOf("Dashboard") }
     fun goBack() { tab = if (tab == "Backup") backupParent else if (isSettingsDetail(tab)) "Settings" else "Dashboard" }
     BackHandler(enabled = tab != "Dashboard") { goBack() }
@@ -264,7 +265,7 @@ fun Manager(dao: RecordDao) {
                     )
                     Column(Modifier.weight(1f)) {
                         Text("BARBER & BEYOND", color = Gold, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("MANAGER  •  OFFLINE", color = Muted, fontSize = 10.sp)
+                        Text("MANAGER  •  OFFLINE FIRST", color = Muted, fontSize = 10.sp)
                     }
                     if (tab == "Dashboard") {
                         TextButton(onClick = { tab = "Settings" }, contentPadding = PaddingValues(horizontal = 8.dp)) {
@@ -326,7 +327,7 @@ fun Manager(dao: RecordDao) {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                     HomeTile("Reports", "▤", compactTiles, Modifier.weight(1f)) { tab = "Reports" }
                                     HomeTile("History", "◷", compactTiles, Modifier.weight(1f)) { tab = "History"; search = "" }
-                                    HomeTile("Backup", "⇧", compactTiles, Modifier.weight(1f)) { backupParent = "Dashboard"; tab = "Backup" }
+                                    HomeTile("Bookings", "▦", compactTiles, Modifier.weight(1f)) { tab = "Bookings" }
                                 }
                                 PaymentSplitCard(cashToday, mpesaToday)
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -375,6 +376,9 @@ fun Manager(dao: RecordDao) {
                                 Text("* Estimates exclude unrecorded costs and taxes. M-Pesa entries are manual, not payment verification.", color = Muted, fontSize = 11.sp)
                                 Spacer(Modifier.height(16.dp))
                             }
+                        }
+                        "Bookings" -> {
+                            BookingInbox(bookingSession) { bookingSession = it }
                         }
                         "Settings" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -495,10 +499,10 @@ fun Manager(dao: RecordDao) {
                         "About Application" -> {
                             Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 Text("BARBER & BEYOND MANAGER", color=Gold, fontSize=18.sp, fontWeight=FontWeight.Bold)
-                                Text("Version 1.5.1 • Offline Edition", color=TextColor)
+                                Text("Version 1.6.0 • Offline-First Edition", color=TextColor)
                                 Text("Powered by TILLERN LABS", color=Gold)
-                                Text("A simple shop manager for sales, expenses, services and reports. No customers or bookings module.", color=Muted)
-                                Text("Your business records stay on this Android installation. There is no internet permission or automatic cloud sync.", color=Muted, fontSize=12.sp)
+                                Text("Offline sales, expenses, services and reports, plus a secure online booking inbox.", color=Muted)
+                                Text("Local business records remain on this device. Booking requests require internet and an authorized Supabase admin account.", color=Muted, fontSize=12.sp)
                             }
                         }
                         else -> {
